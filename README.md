@@ -4,6 +4,8 @@ Sitio de PromptRaid: juegos hechos con IA y el prompt de regalo.
 
 Es un sitio estático, sin build: `index.html` en la raíz, imágenes en `img/`, juegos en `juegos/` y prompts en `prompts/`.
 
+El manual de marca está en `docs/manual-de-marca.md`.
+
 ## Agregar un juego nuevo
 
 1. Copiá el HTML del juego en `juegos/` (un solo archivo).
