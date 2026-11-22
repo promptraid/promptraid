@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ajedrez Arcano</title>
+<style>
+:root{
+  --bg:#121419; --panel:#1d2129; --panel2:#272c37; --line:#353b48;
+  --text:#ece8df; --muted:#9aa1ae; --accent:#e6b85c; --accent-ink:#2a1f08;
+  --light:#ecdcb9; --dark:#a97c55; --danger:#ef5a5f;
+  --magic1:#35c47c; --magic2:#0e6438; --magicB:#93f2bb;
+  --trap1:#a96ef2; --trap2:#4a2186; --trapB:#dbbfff;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#ece5d6; --panel:#fbf7ef; --panel2:#efe7d6; --line:#d3c8b2;
+    --text:#24201a; --muted:#6c665b; color-scheme:light;
+  }
+}
+:root[data-theme="dark"]{ --bg:#121419; --panel:#1d2129; --panel2:#272c37; --line:#353b48; --text:#ece8df; --muted:#9aa1ae; color-scheme:dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px}
+button{font:inherit}
+.sym{font-family:"Segoe UI Symbol","Noto Sans Symbols 2","Noto Sans Symbols","DejaVu Sans",serif}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;flex-wrap:wrap}
+header h1{margin:0;font-size:20px;letter-spacing:.02em}
+header h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
+.hctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.hctl label{display:flex;gap:6px;align-items:center;cursor:pointer}
+
+.status{position:sticky;top:0;z-index:20;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.status .who-box{display:flex;gap:8px;align-items:center}
+.pill{padding:4px 12px;border-radius:999px;font-weight:800;font-size:13px}
+.pill.w{background:#f4efe4;color:#222;border:1px solid #bbb}
+.pill.b{background:#111;color:#eee;border:1px solid #555}
+.tn{color:var(--muted);font-size:12px}
+.prompt{flex:1;min-width:220px;line-height:1.4}
+.prompt .msg{color:var(--accent);font-size:12.5px;margin-top:2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.chip.on{color:var(--text)}
+.warn{color:var(--danger)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-weight:650;cursor:pointer}
+.btn:hover:not(:disabled){filter:brightness(1.12)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.magic{background:var(--magic2);border-color:var(--magicB);color:#eafff1}
+.btn.trap{background:var(--trap2);border-color:var(--trapB);color:#f6efff}
+.btn.pulse{animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,184,92,.6)}50%{box-shadow:0 0 0 6px rgba(230,184,92,0)}}
+
+main.layout{display:grid;grid-template-columns:minmax(0,720px) 300px;gap:20px;justify-content:center;padding:16px}
+@media (max-width:1060px){main.layout{grid-template-columns:minmax(0,720px)}}
+.table{display:flex;flex-direction:column;gap:10px;align-items:center;min-width:0}
+
+.zone{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;--cw:86px;transition:box-shadow .2s,border-color .2s}
+.zone.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.zone-head{display:flex;gap:10px;align-items:center;font-size:13px;margin-bottom:4px;flex-wrap:wrap}
+.pname{font-weight:800;display:flex;align-items:center;gap:6px}
+.kmini{font-size:18px;line-height:1}
+.kmini.w{color:#fbf8f1;text-shadow:0 0 1px #000,0 0 1px #000,0 0 1px #000}
+.kmini.b{color:#111;text-shadow:0 0 2px rgba(255,255,255,.6)}
+.meta{color:var(--muted);font-size:12px}
+.chkbadge{background:var(--danger);color:#fff;font-weight:800;font-size:11px;padding:2px 8px;border-radius:999px;letter-spacing:.05em}
+.caps{margin-left:auto;font-size:17px;letter-spacing:-1px}
+.caps .w{color:#fbf8f1;text-shadow:0 0 1px #000,0 0 1px #000}
+.caps .b{color:#111;text-shadow:0 0 2px rgba(255,255,255,.5)}
+.zone-body{display:flex;gap:12px;align-items:flex-start}
+.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.slots-wrap{flex:none;padding-right:12px;border-right:1px dashed var(--line)}
+.slots{display:flex;gap:6px}
+.hand-wrap{flex:1;min-width:0}
+.hand{display:flex;overflow-x:auto;padding:8px 4px 6px;min-height:calc(var(--cw)*1.4 + 14px);align-items:flex-start}
+.hand .card + .card{margin-left:calc(var(--cw) * -0.28)}
+.hand .card:hover{z-index:5}
+.empty{color:var(--muted);font-size:12px;align-self:center}
+.slot-empty{width:var(--cw);aspect-ratio:5/7;border:2px dashed var(--line);border-radius:calc(var(--cw)*.09);display:grid;place-items:center;color:var(--muted);font-size:10px;text-align:center}
+@media (max-width:700px){
+  .zone{--cw:58px}
+  .zone-body{gap:8px}
+  .slots-wrap{padding-right:8px}
+  .slots{gap:4px}
+}
+
+/* Tablero */
+.board-wrap{--bs:min(560px, calc(100vw - 32px));width:var(--bs)}
+.board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);width:var(--bs);height:var(--bs);border-radius:6px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35),0 0 0 5px #3b2a1c}
+.sq{position:relative;display:grid;place-items:center;user-select:none;-webkit-user-select:none;cursor:default}
+.sq.light{background:var(--light)}
+.sq.dark{background:var(--dark)}
+.sq.click{cursor:pointer}
+.ov{position:absolute;inset:0;pointer-events:none}
+.ov.last{background:rgba(255,214,90,.38)}
+.ov.sel{background:rgba(80,190,255,.5)}
+.ov.chk{background:radial-gradient(circle,rgba(239,50,50,.95) 0%,rgba(239,50,50,.45) 45%,rgba(239,50,50,0) 72%)}
+.ov.dot{inset:36%;border-radius:50%;background:rgba(25,30,40,.38)}
+.ov.ring{inset:4%;border-radius:50%;border:calc(var(--bs)/8*.08) solid rgba(25,30,40,.42)}
+.ov.eff{inset:3px;border:3px solid var(--effc);border-radius:6px;box-shadow:inset 0 0 10px var(--effc);animation:effp 1.2s infinite}
+.ov.effsel{background:var(--effbg)}
+.ov.frz{inset:8%;border-radius:50%;border:3px dashed #7d4fd6;background:rgba(125,79,214,.15)}
+@keyframes effp{50%{opacity:.45}}
+.pc{position:relative;z-index:2;font-size:calc(var(--bs)/8*.8);line-height:1}
+.pc.w{color:#fcf9f2;text-shadow:0 0 1px #000,0 0 1px #000,1px 1px 0 #2a2a2a,-1px -1px 0 #2a2a2a,1px -1px 0 #2a2a2a,-1px 1px 0 #2a2a2a,0 2px 3px rgba(0,0,0,.35)}
+.pc.b{color:#1b1918;text-shadow:0 0 2px rgba(255,255,255,.45),0 2px 3px rgba(0,0,0,.3)}
+.coord{position:absolute;font-size:10px;font-weight:700;z-index:3;pointer-events:none}
+.coord.rk{top:2px;left:3px}
+.coord.fl{bottom:1px;right:3px}
+.sq.light .coord{color:#9b7450}
+.sq.dark .coord{color:#f0e2c4}
+
+/* Cartas */
+.card{width:var(--cw);flex:none;aspect-ratio:5/7;border-radius:calc(var(--cw)*.09);padding:calc(var(--cw)*.05);display:flex;flex-direction:column;gap:calc(var(--cw)*.035);position:relative;font-size:calc(var(--cw)*.083);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .12s, box-shadow .12s;overflow:hidden}
+.card.magic{background:linear-gradient(165deg,var(--magic1),var(--magic2));border:max(1px,calc(var(--cw)*.022)) solid var(--magicB)}
+.card.trap{background:linear-gradient(165deg,var(--trap1),var(--trap2));border:max(1px,calc(var(--cw)*.022)) solid var(--trapB)}
+.card .art{flex:0 0 40%;border-radius:calc(var(--cw)*.05);background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.2),rgba(0,0,0,.38));box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);overflow:hidden}
+.card .art svg{width:100%;height:100%;display:block}
+.card .ttl{text-align:center;font-weight:800;font-size:1.05em;line-height:1.12;padding:.32em .2em;background:rgba(0,0,0,.28);border-radius:.3em;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.card .desc{flex:1;min-height:0;overflow:hidden;background:rgba(255,253,246,.93);color:#1f1d1a;border-radius:.35em;padding:.42em .48em;font-size:.8em;line-height:1.26;display:flex;flex-direction:column;justify-content:space-between}
+.card .kind{display:block;margin-top:.3em;font-size:.82em;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.card.magic .kind{color:#0e6438}
+.card.trap .kind{color:#4a2186}
+.card .badge{position:absolute;top:calc(var(--cw)*.075);right:calc(var(--cw)*.075);width:calc(var(--cw)*.2);height:calc(var(--cw)*.2);z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.card .badge svg{width:100%;height:100%;display:block}
+.card.clickable{cursor:pointer}
+.card.clickable:hover{transform:translateY(-6px);box-shadow:0 8px 16px rgba(0,0,0,.45)}
+.card.peek{filter:saturate(.75) brightness(.85)}
+.card.peek::after{content:"BOCA ABAJO";position:absolute;left:-4px;right:-4px;top:46%;background:rgba(10,10,14,.8);color:#fff;font-size:.78em;font-weight:800;letter-spacing:.08em;text-align:center;padding:.28em 0;transform:rotate(-8deg);z-index:3}
+.card.glow{box-shadow:0 0 0 2px var(--accent),0 0 16px rgba(230,184,92,.75);animation:pulse 1.4s infinite}
+.card.back{background:radial-gradient(circle at 50% 50%,#2e3d60 0,#141a2b 72%);border:max(1px,calc(var(--cw)*.022)) solid #c9a24f;display:grid;place-items:center;padding:0}
+.card.back::before{content:"";position:absolute;inset:calc(var(--cw)*.06);border:1px solid rgba(201,162,79,.5);border-radius:calc(var(--cw)*.06);background:repeating-linear-gradient(45deg,rgba(201,162,79,.08) 0 4px,transparent 4px 9px)}
+.card.back .emb{position:relative;width:52%;aspect-ratio:1;border-radius:50%;border:max(1px,calc(var(--cw)*.02)) solid #c9a24f;display:grid;place-items:center;color:#e6c46e;font-size:calc(var(--cw)*.3);background:#151b2c}
+
+/* Lateral */
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.box h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.preview{--cw:220px;display:grid;place-items:center;min-height:120px;color:var(--muted);font-size:12.5px;text-align:center}
+@media (max-width:1060px){.preview-box{display:none}}
+.piles{display:flex;gap:16px;--cw:70px;align-items:flex-end}
+.pile{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.pile .slot-empty{font-size:10px}
+.log{max-height:280px;overflow:auto;font-size:12.5px;line-height:1.45;display:flex;flex-direction:column;gap:4px}
+.log div{padding-bottom:4px;border-bottom:1px solid var(--line)}
+.log div:last-child{border-bottom:0}
+.log .turnline{color:var(--muted);font-weight:700}
+b.who.w{color:var(--text)}
+b.who.b{color:var(--text);text-decoration:underline;text-decoration-color:var(--muted)}
+details.box summary{cursor:pointer;font-weight:700}
+details.box ul{padding-left:18px;margin:10px 0 0;line-height:1.5;font-size:13px}
+details.box li{margin-bottom:4px}
+
+/* Modales */
+.modal-bg{position:fixed;inset:0;background:rgba(8,10,14,.72);display:grid;place-items:center;z-index:50;padding:16px}
+.modal-bg.opaque{background:rgba(10,12,16,.97)}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:440px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.modal h2{margin:0 0 8px;font-size:22px}
+.modal p{color:var(--muted);line-height:1.5;margin:0 0 16px}
+.modal .bigcard{--cw:min(240px,62vw);display:flex;justify-content:center;margin-bottom:14px}
+.modal .note{font-size:12.5px;color:var(--accent);margin:0 0 12px}
+.modal .btns{justify-content:center}
+.promo-row{display:flex;gap:10px;justify-content:center;margin-top:6px}
+.promo-row button{width:64px;height:64px;font-size:42px;border-radius:10px;background:var(--light);border:2px solid var(--line);cursor:pointer;display:grid;place-items:center;line-height:1}
+.promo-row button:hover{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+const FILES = 'abcdefgh';
+const VS = '︎';
+const GLYPH = {k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟'};
+const VAL = {p:1, n:2, b:3, r:3, q:5};
+const PNAME = {p:'Peón', n:'Caballo', b:'Alfil', r:'Torre', q:'Reina', k:'Rey'};
+const ART_DEF = {p:'el', n:'el', b:'el', r:'la', q:'la', k:'el'};
+const CNAME = {w:'Blancas', b:'Negras'};
+const HAND_MAX = 7;
+const opp = c => c === 'w' ? 'b' : 'w';
+const sqName = (r, c) => FILES[c] + (8 - r);
+const g = t => `<span class="sym">${GLYPH[t]}${VS}</span>`;
+const who = c => `<b class="who ${c}">${CNAME[c]}</b>`;
+const inB = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+const K = (r, c) => r + ',' + c;
+
+/* ---------- Definición de cartas ---------- */
+const CARDS = {
+  extra:  {type:'magic', count:5, title:'Movimiento adicional',
+           desc:'Este turno podés hacer un movimiento de ajedrez extra. Ningún movimiento puede capturar al rey.'},
+  step:   {type:'magic', count:6, title:'Una casilla más',
+           desc:'Una de tus piezas se mueve una casilla en cualquier dirección, hacia una casilla vacía.'},
+  swap:   {type:'magic', count:5, title:'Intercambio de piezas',
+           desc:'Dos de tus piezas intercambian su posición. Un peón no puede quedar en la primera ni en la última fila.'},
+  summon: {type:'magic', count:5, title:'Sacrificio e invocación',
+           desc:'Sacrificá piezas propias cuyo valor sume lo mismo que la pieza que querés traer. Aparece en la casilla de una sacrificada. P1 · C2 · A3 · T3 · R5'},
+  draw:   {type:'magic', count:4, title:'Robar dos cartas',
+           desc:'Robá 2 cartas del mazo común.'},
+  back:   {type:'trap', count:9, title:'Retroceder una casilla',
+           desc:'Al terminar el turno rival: una pieza enemiga retrocede una casilla, si esa casilla está libre.'},
+  roots:  {type:'trap', count:6, title:'Raíces: inmovilizar',
+           desc:'Al terminar el turno rival: una pieza enemiga (no el rey) no puede moverse en su próximo turno.'}
+};
+
+const SYMF = `font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Noto Sans Symbols','DejaVu Sans',serif"`;
+const T = (x, y, s, ch, fill, op) => `<text x="${x}" y="${y}" font-size="${s}" text-anchor="middle" dominant-baseline="central" fill="${fill || '#fff'}"${op ? ` opacity="${op}"` : ''} ${SYMF}>${ch}${VS}</text>`;
+const NUM = (x, y, txt) => `<text x="${x}" y="${y}" font-size="12" font-weight="800" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">${txt}</text>`;
+const ART = (() => {
+  let rays = '';
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    const x1 = 50 + Math.cos(a) * 15, y1 = 33 + Math.sin(a) * 15, x2 = 50 + Math.cos(a) * 26, y2 = 33 + Math.sin(a) * 26;
+    rays += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#c4ffdb" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="2.6" fill="#fff"/>`;
+  }
+  const pts = [0,1,2,3,4].map(i => { const a = -Math.PI/2 + i*2*Math.PI/5; return [50 + 22*Math.cos(a), 34 + 22*Math.sin(a)]; });
+  const penta = 'M' + [0,2,4,1,3].map(i => pts[i].map(n => n.toFixed(1)).join(' ')).join(' L') + 'Z';
+  const st = 'stroke="#c4ffdb" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  return {
+    extra: `<circle cx="30" cy="33" r="22" fill="rgba(0,0,0,.18)"/>${T(30,34,34,'♞','#effff4')}<path d="M54 21l13 12-13 12M70 21l13 12-13 12" stroke="#c4ffdb" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>${NUM(90,10,'+1')}`,
+    step: `${rays}<circle cx="50" cy="33" r="13" fill="rgba(0,0,0,.25)"/>${T(50,34,22,'♜','#effff4')}`,
+    swap: `${T(24,35,28,'♝','#effff4')}${T(76,35,28,'♞','#effff4')}<path d="M32 15Q50 1 68 15" ${st}/><path d="M61 16L68 15L66 8" ${st}/><path d="M68 53Q50 67 32 53" ${st}/><path d="M39 52L32 53L34 60" ${st}/>`,
+    summon: `<circle cx="50" cy="34" r="25" fill="rgba(180,255,210,.12)" stroke="#c4ffdb" stroke-width="1.5"/><path d="${penta}" fill="none" stroke="#c4ffdb" stroke-width="1.2" opacity=".75"/>${T(13,52,13,'♟','#effff4',.45)}${T(87,52,13,'♞','#effff4',.45)}${T(50,33,26,'♛','#ffffff')}`,
+    draw: `<g transform="rotate(-14 40 36)"><rect x="27" y="13" width="26" height="38" rx="3" fill="#0e6438" stroke="#c4ffdb" stroke-width="2"/></g><g transform="rotate(12 60 36)"><rect x="47" y="13" width="26" height="38" rx="3" fill="#1c8a52" stroke="#c4ffdb" stroke-width="2"/><path d="M52 32q8-9 16 0q-8 9-16 0z" fill="none" stroke="#fff" stroke-width="1.6"/><circle cx="60" cy="32" r="2.6" fill="#fff"/></g>${NUM(90,10,'+2')}`,
+    back: `<rect x="37" y="42" width="26" height="19" rx="3" fill="rgba(255,255,255,.08)" stroke="#e7d6ff" stroke-dasharray="3 2" stroke-width="1.5"/>${T(50,18,22,'♟','#f6efff')}<path d="M50 31v22M43 46l7 8 7-8" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    roots: `${T(50,28,28,'♜','#f6efff')}<path d="M16 64C22 46 36 54 39 38M84 64C78 46 64 54 61 38M50 64C44 55 57 50 50 43" stroke="#d9c2ff" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="25" cy="51" rx="4.5" ry="2.2" transform="rotate(-35 25 51)" fill="#d9c2ff"/><ellipse cx="75" cy="51" rx="4.5" ry="2.2" transform="rotate(35 75 51)" fill="#d9c2ff"/><ellipse cx="55" cy="54" rx="4" ry="2" transform="rotate(-20 55 54)" fill="#d9c2ff"/>`
+  };
+})();
+const BADGE = {
+  magic: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0b4a28" stroke="#9dffc4" stroke-width="1.5"/><path d="M12 3.8L13.9 10.1L20.2 12L13.9 13.9L12 20.2L10.1 13.9L3.8 12L10.1 10.1Z" fill="#dcffe9"/></svg>`,
+  trap: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#341361" stroke="#e0c6ff" stroke-width="1.5"/><path d="M12 5.2L19.2 17.8H4.8Z" fill="none" stroke="#f3e8ff" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v3.6" stroke="#f3e8ff" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="15.8" r="1.05" fill="#f3e8ff"/></svg>`
+};
+
+/* ---------- Estado ---------- */
+let S = null;
+let privacy = true;
+let overlayFn = null, overlayFn2 = null;
+let uid = 0;
+const CARD_BY_ID = {};
+
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function buildDeck(){
+  const d = [];
+  for (const k in CARDS) for (let i = 0; i < CARDS[k].count; i++){ const c = {id: ++uid, key: k}; CARD_BY_ID[c.id] = c; d.push(c); }
+  return shuffle(d);
+}
+function initialBoard(){
+  const b = [...Array(8)].map(() => Array(8).fill(null));
+  const back = ['r','n','b','q','k','b','n','r'];
+  for (let c = 0; c < 8; c++){
+    b[0][c] = {t:back[c], c:'b', moved:false}; b[1][c] = {t:'p', c:'b', moved:false};
+    b[6][c] = {t:'p', c:'w', moved:false};     b[7][c] = {t:back[c], c:'w', moved:false};
+  }
+  return b;
+}
+const cloneBoard = b => b.map(row => row.map(p => p ? {...p} : null));
+function log(html){ S.log.unshift(html); if (S.log.length > 120) S.log.pop(); }
+
+/* ---------- Motor de ajedrez ---------- */
+const KN = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+const KG = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+const ORTH = [[1,0],[-1,0],[0,1],[0,-1]], DIAG = [[1,1],[1,-1],[-1,1],[-1,-1]];
+
+function findKing(b, col){ for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){ const p = b[r][c]; if (p && p.t === 'k' && p.c === col) return [r, c]; } return null; }
+function attacked(b, r, c, by){
+  const pr = by === 'w' ? r + 1 : r - 1;
+  for (const dc of [-1, 1]){ const cc = c + dc; if (inB(pr, cc)){ const p = b[pr][cc]; if (p && p.c === by && p.t === 'p') return true; } }
+  for (const [dr, dc] of KN){ const rr = r + dr, cc = c + dc; if (inB(rr, cc)){ const p = b[rr][cc]; if (p && p.c === by && p.t === 'n') return true; } }
+  for (const [dr, dc] of KG){ const rr = r + dr, cc = c + dc; if (inB(rr, cc)){ const p = b[rr][cc]; if (p && p.c === by && p.t === 'k') return true; } }
+  for (const [dirs, types] of [[ORTH, 'rq'], [DIAG, 'bq']]){
+    for (const [dr, dc] of dirs){
+      let rr = r + dr, cc = c + dc;
+      while (inB(rr, cc)){ const p = b[rr][cc]; if (p){ if (p.c === by && types.includes(p.t)) return true; break; } rr += dr; cc += dc; }
+    }
+  }
+  return false;
+}
+function inCheck(b, col){ const k = findKing(b, col); return k ? attacked(b, k[0], k[1], opp(col)) : false; }
+
+function pseudo(b, r, c, ep){
+  const p = b[r][c]; if (!p) return [];
+  const col = p.c, ms = [];
+  const add = (tr, tc, x) => ms.push(Object.assign({fr:r, fc:c, tr, tc}, x || {}));
+  const canLand = (tr, tc) => { const q = b[tr][tc]; return !q || (q.c !== col && q.t !== 'k'); };
+  if (p.t === 'p'){
+    const d = col === 'w' ? -1 : 1, start = col === 'w' ? 6 : 1;
+    if (inB(r + d, c) && !b[r + d][c]){
+      add(r + d, c);
+      if (r === start && inB(r + 2*d, c) && !b[r + 2*d][c]) add(r + 2*d, c, {double:true});
+    }
+    for (const dc of [-1, 1]){
+      const tr = r + d, tc = c + dc; if (!inB(tr, tc)) continue;
+      const q = b[tr][tc];
+      if (q && q.c !== col && q.t !== 'k') add(tr, tc);
+      else if (!q && ep && ep.r === tr && ep.c === tc && ep.color !== col){
+        const v = b[ep.pr][ep.pc];
+        if (v && v.t === 'p' && v.c === ep.color) add(tr, tc, {ep:true, epr:ep.pr, epc:ep.pc});
+      }
+    }
+  } else if (p.t === 'n' || p.t === 'k'){
+    for (const [dr, dc] of (p.t === 'n' ? KN : KG)){ const tr = r + dr, tc = c + dc; if (inB(tr, tc) && canLand(tr, tc)) add(tr, tc); }
+    if (p.t === 'k' && !p.moved && c === 4 && r === (col === 'w' ? 7 : 0) && !attacked(b, r, c, opp(col))){
+      const o = opp(col);
+      const rk = b[r][7];
+      if (rk && rk.t === 'r' && rk.c === col && !rk.moved && !b[r][5] && !b[r][6] && !attacked(b, r, 5, o) && !attacked(b, r, 6, o)) add(r, 6, {castle:'k'});
+      const rq = b[r][0];
+      if (rq && rq.t === 'r' && rq.c === col && !rq.moved && !b[r][1] && !b[r][2] && !b[r][3] && !attacked(b, r, 3, o) && !attacked(b, r, 2, o)) add(r, 2, {castle:'q'});
+    }
+  } else {
+    const dirs = p.t === 'r' ? ORTH : p.t === 'b' ? DIAG : ORTH.concat(DIAG);
+    for (const [dr, dc] of dirs){
+      let tr = r + dr, tc = c + dc;
+      while (inB(tr, tc)){
+        const q = b[tr][tc];
+        if (!q) add(tr, tc);
+        else { if (q.c !== col && q.t !== 'k') add(tr, tc); break; }
+        tr += dr; tc += dc;
+      }
+    }
+  }
+  return ms;
+}
+function applyMove(b, m, promo){
+  const p = b[m.fr][m.fc];
+  if (m.ep) b[m.epr][m.epc] = null;
+  if (m.castle){
+    const r = m.fr;
+    if (m.castle === 'k'){ b[r][5] = b[r][7]; b[r][7] = null; b[r][5].moved = true; }
+    else { b[r][3] = b[r][0]; b[r][0] = null; b[r][3].moved = true; }
+  }
+  b[m.tr][m.tc] = p; b[m.fr][m.fc] = null; p.moved = true;
+  if (p.t === 'p' && (m.tr === 0 || m.tr === 7)) p.t = promo || 'q';
+}
+function isFrozen(p){ return !!(p && p.frozen && p.frozen >= S.turnNum && !S.freezeBroken); }
+function legal(r, c, ignoreFreeze){
+  const p = S.board[r][c]; if (!p) return [];
+  if (!ignoreFreeze && isFrozen(p)) return [];
+  return pseudo(S.board, r, c, S.ep).filter(m => { const nb = cloneBoard(S.board); applyMove(nb, m); return !inCheck(nb, p.c); });
+}
+function allLegal(col, ignoreFreeze){
+  const out = [];
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){ const p = S.board[r][c]; if (p && p.c === col) out.push(...legal(r, c, ignoreFreeze)); }
+  return out;
+}
+function eachPiece(col, fn){ for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){ const p = S.board[r][c]; if (p && p.c === col) fn(p, r, c); } }
+
+/* ---------- Validaciones de efectos ---------- */
+function stepDests(r, c, col){
+  const p = S.board[r][c]; if (!p || p.c !== col || isFrozen(p)) return [];
+  const out = [];
+  for (const [dr, dc] of KG){
+    const tr = r + dr, tc = c + dc;
+    if (!inB(tr, tc) || S.board[tr][tc]) continue;
+    if (p.t === 'p' && tr === (col === 'w' ? 7 : 0)) continue;
+    const nb = cloneBoard(S.board); nb[tr][tc] = nb[r][c]; nb[r][c] = null;
+    if (!inCheck(nb, col)) out.push([tr, tc]);
+  }
+  return out;
+}
+function swapPartners(r, c, col){
+  const a = S.board[r][c]; if (!a || a.c !== col || isFrozen(a)) return [];
+  const out = [];
+  eachPiece(col, (q, r2, c2) => {
+    if ((r2 === r && c2 === c) || q.t === a.t || isFrozen(q)) return;
+    if (a.t === 'p' && (r2 === 0 || r2 === 7)) return;
+    if (q.t === 'p' && (r === 0 || r === 7)) return;
+    const nb = cloneBoard(S.board); nb[r][c] = nb[r2][c2]; nb[r2][c2] = {...a};
+    if (!inCheck(nb, col)) out.push([r2, c2]);
+  });
+  return out;
+}
+function achievable(col){
+  let sums = new Set([0]);
+  eachPiece(col, p => { if (p.t === 'k') return; const v = VAL[p.t]; const n = new Set(sums); sums.forEach(s => n.add(s + v)); sums = n; });
+  return sums;
+}
+function placements(type, sac, col){
+  const out = [];
+  for (const [r, c] of sac){
+    if (type === 'p' && (r === 0 || r === 7)) continue;
+    const nb = cloneBoard(S.board);
+    sac.forEach(([sr, sc]) => nb[sr][sc] = null);
+    nb[r][c] = {t:type, c:col, moved:true};
+    if (!inCheck(nb, col)) out.push([r, c]);
+  }
+  return out;
+}
+function backTarget(r, c, victim){
+  const p = S.board[r][c]; if (!p || p.c !== victim) return null;
+  const tr = r + (victim === 'w' ? 1 : -1);
+  if (!inB(tr, c) || S.board[tr][c]) return null;
+  if (p.t === 'p' && tr === (victim === 'w' ? 7 : 0)) return null;
+  const nb = cloneBoard(S.board); nb[tr][c] = nb[r][c]; nb[r][c] = null;
+  if (inCheck(nb, victim)) return null;
+  return [tr, c];
+}
+function rootsOk(r, c, victim){ const p = S.board[r][c]; return !!(p && p.c === victim && p.t !== 'k' && !(p.frozen && p.frozen >= S.turnNum + 2)); }
+
+function anyCell(col, fn){ let ok = false; eachPiece(col, (p, r, c) => { if (!ok && fn(p, r, c)) ok = true; }); return ok; }
+function magicBlock(card, col){
+  if (S.magicUsed) return 'Ya activaste una carta de magia este turno (máximo una por turno).';
+  switch (card.key){
+    case 'step': return anyCell(col, (p, r, c) => stepDests(r, c, col).length) ? '' : 'Ninguna de tus piezas puede moverse una casilla sin dejar a tu rey en jaque.';
+    case 'swap': return anyCell(col, (p, r, c) => swapPartners(r, c, col).length) ? '' : 'No hay intercambios válidos en este momento.';
+    case 'summon': { const a = achievable(col); return ['n','b','r','q'].some(t => a.has(VAL[t])) ? '' : 'No tenés piezas suficientes para sacrificar.'; }
+    case 'draw': return (S.deck.length + S.discard.length) ? '' : 'No quedan cartas para robar.';
+  }
+  return '';
+}
+function trapBlock(card, victim){
+  if (card.key === 'back') return anyCell(victim, (p, r, c) => backTarget(r, c, victim)) ? '' : 'Ninguna pieza enemiga puede retroceder ahora.';
+  if (card.key === 'roots') return anyCell(victim, (p, r, c) => rootsOk(r, c, victim)) ? '' : 'No hay piezas enemigas para inmovilizar.';
+  return '';
+}
+
+/* ---------- Cartas: mazo, mano, espacios ---------- */
+function drawCards(col, n){
+  for (let i = 0; i < n; i++){
+    if (!S.deck.length){
+      if (S.discard.length){ S.deck = shuffle(S.discard); S.discard = []; log('El descarte se mezcla y forma un mazo nuevo.'); }
+      else { log('No quedan cartas para robar.'); return; }
+    }
+    const c = S.deck.pop();
+    if (S.hands[col].length >= HAND_MAX){ S.discard.push(c); log(`${who(col)} tiene la mano llena: «${CARDS[c.key].title}» va al descarte.`); }
+    else { S.hands[col].push(c); log(`${who(col)} roba una carta.`); }
+  }
+}
+function consume(src){
+  let card;
+  if (src.zone === 'hand'){ const h = S.hands[src.color]; const i = h.findIndex(c => c.id === src.id); card = h.splice(i, 1)[0]; }
+  else { const sl = S.slots[src.color]; const i = sl.findIndex(s => s && s.card.id === src.id); card = sl[i].card; sl[i] = null; }
+  S.discard.push(card);
+  return card;
+}
+
+/* ---------- Flujo de turnos ---------- */
+function newGame(){
+  uid = 0; for (const k in CARD_BY_ID) delete CARD_BY_ID[k];
+  S = {
+    board: initialBoard(), turn:'w', turnNum:1, ep:null,
+    deck: buildDeck(), discard:[], hands:{w:[], b:[]}, slots:{w:[null,null,null], b:[null,null,null]},
+    phase:'handoff', movesAllowed:1, movesUsed:0, magicUsed:false,
+    sel:null, selMoves:[], selCard:null, pending:null, promo:null, reactor:null, freezeBroken:false,
+    lastMove:null, captured:{w:[], b:[]}, log:[], result:null, overlay:null, msg:''
+  };
+  for (let i = 0; i < 3; i++){ S.hands.w.push(S.deck.pop()); S.hands.b.push(S.deck.pop()); }
+  log('Comienza la partida: cada jugador recibe 3 cartas del mazo común.');
+  beginTurn();
+}
+function beginTurn(){
+  S.phase = 'handoff';
+  if (privacy){
+    S.overlay = {title:`Turno de ${CNAME[S.turn]}`, text:`Pasale el dispositivo a ${CNAME[S.turn]}. Su mano queda oculta hasta tocar el botón.`, btn:'Comenzar turno'};
+    overlayFn = startTurn; overlayFn2 = null;
+    render();
+  } else startTurn();
+}
+function startTurn(){
+  S.overlay = null;
+  const col = S.turn;
+  const check = inCheck(S.board, col);
+  S.freezeBroken = check;
+  if (allLegal(col, true).length === 0){
+    S.phase = 'over';
+    S.result = check ? {type:'mate', winner:opp(col)} : {type:'stale'};
+    if (check){ log(`¡Jaque mate! Ganan ${who(opp(col))}.`); S.overlay = {title:'¡Jaque mate!', text:`Ganan ${CNAME[opp(col)]}.`, btn:'Nueva partida', btn2:'Ver tablero'}; }
+    else { log('Ahogado: la partida termina en tablas.'); S.overlay = {title:'Tablas por ahogado', text:`${CNAME[col]} no tiene movimientos legales y no está en jaque.`, btn:'Nueva partida', btn2:'Ver tablero'}; }
+    overlayFn = newGame; overlayFn2 = () => {};
+    render(); return;
+  }
+  S.phase = 'main'; S.movesAllowed = 1; S.movesUsed = 0; S.magicUsed = false;
+  S.sel = null; S.selMoves = []; S.selCard = null; S.msg = '';
+  log(`<span class="turnline">— Turno ${S.turnNum}: ${CNAME[col]} —</span>`);
+  drawCards(col, 1);
+  if (check){
+    log(`${who(col)} está en jaque.`);
+    if (anyCell(col, p => p.frozen && p.frozen >= S.turnNum)) log('El jaque rompe las Raíces: las piezas inmovilizadas pueden moverse este turno.');
+  }
+  render();
+}
+function canEnd(){ return S.phase === 'main' && (S.movesUsed >= 1 || allLegal(S.turn, false).length === 0); }
+function endTurn(){
+  if (!canEnd()) return;
+  S.sel = null; S.selMoves = []; S.selCard = null; S.msg = '';
+  const reactor = opp(S.turn);
+  if (S.slots[reactor].some(s => s)){
+    S.phase = 'reaction'; S.reactor = reactor;
+    if (privacy){
+      S.overlay = {title:`Reacción de ${CNAME[reactor]}`, text:`${CNAME[S.turn]} terminó su turno. Pasale el dispositivo a ${CNAME[reactor]} para que decida si activa una trampa.`, btn:'Continuar'};
+      overlayFn = () => {}; overlayFn2 = null;
+    }
+    render();
+  } else passTurn();
+}
+function passTurn(){
+  S.turn = opp(S.turn); S.turnNum++; S.reactor = null;
+  S.sel = null; S.selMoves = []; S.selCard = null; S.pending = null; S.msg = '';
+  beginTurn();
+}
+
+/* ---------- Movimientos de ajedrez ---------- */
+function clickSquare(r, c){
+  S.msg = '';
+  if (S.phase === 'effect'){ effectClick(r, c); return; }
+  if (S.phase !== 'main') return;
+  const p = S.board[r][c];
+  if (S.sel){ const m = S.selMoves.find(m => m.tr === r && m.tc === c); if (m){ doMove(m); return; } }
+  if (p && p.c === S.turn){
+    if (S.movesUsed >= S.movesAllowed){ S.msg = 'Ya hiciste tu movimiento. Podés usar cartas o terminar el turno.'; S.sel = null; S.selMoves = []; }
+    else if (isFrozen(p)){ S.msg = 'Esa pieza está atrapada por Raíces y no puede moverse este turno.'; S.sel = null; S.selMoves = []; }
+    else if (S.sel && S.sel[0] === r && S.sel[1] === c){ S.sel = null; S.selMoves = []; }
+    else { S.sel = [r, c]; S.selMoves = legal(r, c, false); if (!S.selMoves.length) S.msg = 'Esa pieza no tiene movimientos legales.'; }
+  } else { S.sel = null; S.selMoves = []; }
+  render();
+}
+function doMove(m){
+  const p = S.board[m.fr][m.fc];
+  if (p.t === 'p' && (m.tr === 0 || m.tr === 7)){ S.promo = m; S.phase = 'promo'; render(); return; }
+  execMove(m);
+}
+function execMove(m, promoT){
+  const b = S.board, p = b[m.fr][m.fc];
+  const cap = m.ep ? b[m.epr][m.epc] : b[m.tr][m.tc];
+  const t0 = p.t;
+  applyMove(b, m, promoT);
+  if (cap) S.captured[p.c].push(cap.t);
+  S.ep = m.double ? {r:(m.fr + m.tr) / 2, c:m.fc, pr:m.tr, pc:m.tc, color:p.c} : null;
+  S.lastMove = {a:[m.fr, m.fc], b:[m.tr, m.tc]};
+  S.movesUsed++; S.sel = null; S.selMoves = []; S.phase = 'main'; S.promo = null;
+  let txt;
+  if (m.castle) txt = m.castle === 'k' ? 'enroca corto (O-O)' : 'enroca largo (O-O-O)';
+  else txt = `mueve ${g(t0)} ${sqName(m.fr, m.fc)} → ${sqName(m.tr, m.tc)}${cap ? ` y captura ${g(cap.t)}` : ''}${m.ep ? ' (al paso)' : ''}`;
+  if (t0 === 'p' && p.t !== 'p') txt += ` y corona ${PNAME[p.t]}`;
+  log(`${who(p.c)} ${txt}.`);
+  if (inCheck(b, opp(p.c))) log(`¡Jaque a ${who(opp(p.c))}!`);
+  render();
+}
+
+/* ---------- Activación de cartas ---------- */
+function clickCard(id, zone, color){
+  const okMain = S.phase === 'main' && color === S.turn;
+  const okReact = S.phase === 'reaction' && color === S.reactor && zone === 'slot';
+  if (!okMain && !okReact) return;
+  S.selCard = {id, zone, color}; S.msg = '';
+  render();
+}
+function setCard(){
+  const {id, color} = S.selCard;
+  const i = S.slots[color].findIndex(s => !s); if (i < 0) return;
+  const h = S.hands[color]; const idx = h.findIndex(c => c.id === id);
+  const card = h.splice(idx, 1)[0];
+  S.slots[color][i] = {card, turn:S.turnNum};
+  S.selCard = null;
+  log(`${who(color)} coloca una carta boca abajo.`);
+  render();
+}
+function activate(){
+  const src = S.selCard; S.selCard = null;
+  const card = CARD_BY_ID[src.id], d = CARDS[card.key];
+  if (d.type === 'magic'){
+    if (S.phase !== 'main' || magicBlock(card, src.color)) return render();
+    if (card.key === 'extra'){
+      consume(src); S.magicUsed = true; S.movesAllowed++;
+      log(`${who(src.color)} activa «${d.title}»: puede hacer un movimiento más este turno.`);
+      return render();
+    }
+    if (card.key === 'draw'){
+      consume(src); S.magicUsed = true;
+      log(`${who(src.color)} activa «${d.title}».`);
+      drawCards(src.color, 2);
+      return render();
+    }
+  } else {
+    if (S.phase !== 'reaction' || trapBlock(card, S.turn)) return render();
+  }
+  S.pending = {key:card.key, src, owner:src.color, step: card.key === 'summon' ? 'choose' : 'pick', a:null, sac:[], type:null, ret:S.phase};
+  S.phase = 'effect'; S.sel = null; S.selMoves = [];
+  render();
+}
+function cancelEffect(){ S.phase = S.pending.ret; S.pending = null; S.msg = ''; render(); }
+function finishEffect(text){
+  const P = S.pending;
+  consume(P.src);
+  log(text);
+  S.pending = null; S.msg = '';
+  if (CARDS[P.key].type === 'magic'){
+    S.magicUsed = true; S.phase = 'main';
+    if (inCheck(S.board, opp(P.owner))) log(`¡Jaque a ${who(opp(P.owner))}!`);
+    render();
+  } else {
+    if (inCheck(S.board, P.owner)) log(`${who(P.owner)} sigue en jaque.`);
+    passTurn();
+  }
+}
+function effectCells(){
+  const P = S.pending, click = new Set(), sel = new Set();
+  const own = P.owner, en = opp(own);
+  switch (P.key){
+    case 'step':
+      if (P.step === 'pick') eachPiece(own, (p, r, c) => { if (stepDests(r, c, own).length) click.add(K(r, c)); });
+      else { sel.add(K(...P.a)); stepDests(P.a[0], P.a[1], own).forEach(([r, c]) => click.add(K(r, c))); }
+      break;
+    case 'swap':
+      if (P.step === 'pick') eachPiece(own, (p, r, c) => { if (swapPartners(r, c, own).length) click.add(K(r, c)); });
+      else { sel.add(K(...P.a)); swapPartners(P.a[0], P.a[1], own).forEach(([r, c]) => click.add(K(r, c))); }
+      break;
+    case 'summon':
+      if (P.step === 'sacrifice'){ eachPiece(own, (p, r, c) => { if (p.t !== 'k') click.add(K(r, c)); }); P.sac.forEach(([r, c]) => sel.add(K(r, c))); }
+      else if (P.step === 'place'){ P.sac.forEach(([r, c]) => sel.add(K(r, c))); placements(P.type, P.sac, own).forEach(([r, c]) => click.add(K(r, c))); }
+      break;
+    case 'back': eachPiece(en, (p, r, c) => { if (backTarget(r, c, en)) click.add(K(r, c)); }); break;
+    case 'roots': eachPiece(en, (p, r, c) => { if (rootsOk(r, c, en)) click.add(K(r, c)); }); break;
+  }
+  return {click, sel};
+}
+function effectClick(r, c){
+  const P = S.pending, b = S.board, k = K(r, c), own = P.owner, en = opp(own);
+  const cells = effectCells(), d = CARDS[P.key];
+  switch (P.key){
+    case 'step':
+    case 'swap': {
+      const finder = P.key === 'step' ? stepDests : swapPartners;
+      if (P.step === 'dest' && cells.click.has(k)){
+        const [fr, fc] = P.a, p = b[fr][fc];
+        if (P.key === 'step'){
+          b[r][c] = p; b[fr][fc] = null; p.moved = true;
+          let extra = '';
+          if (p.t === 'p' && (r === 0 || r === 7)){ p.t = 'q'; extra = ' y corona Reina'; }
+          S.lastMove = {a:[fr, fc], b:[r, c]};
+          return finishEffect(`${who(own)} activa «${d.title}»: ${g(p.t === 'q' && extra ? 'p' : p.t)} ${sqName(fr, fc)} → ${sqName(r, c)}${extra}.`);
+        } else {
+          const q = b[r][c];
+          b[fr][fc] = q; b[r][c] = p; p.moved = true; q.moved = true;
+          S.lastMove = {a:[fr, fc], b:[r, c]};
+          return finishEffect(`${who(own)} activa «${d.title}»: ${g(p.t)} ${sqName(fr, fc)} ⇄ ${g(q.t)} ${sqName(r, c)}.`);
+        }
+      }
+      if (P.step === 'dest' && P.a[0] === r && P.a[1] === c){ P.a = null; P.step = 'pick'; break; }
+      if (finder(r, c, own).length){ P.a = [r, c]; P.step = 'dest'; }
+      break;
+    }
+    case 'summon':
+      if (P.step === 'sacrifice' && cells.click.has(k)){
+        const i = P.sac.findIndex(([sr, sc]) => sr === r && sc === c);
+        if (i >= 0) P.sac.splice(i, 1); else P.sac.push([r, c]);
+      } else if (P.step === 'place' && cells.click.has(k)){
+        const names = P.sac.map(([sr, sc]) => g(b[sr][sc].t)).join(' ');
+        P.sac.forEach(([sr, sc]) => b[sr][sc] = null);
+        b[r][c] = {t:P.type, c:own, moved:true};
+        S.lastMove = {a:[r, c], b:[r, c]};
+        return finishEffect(`${who(own)} activa «${d.title}»: sacrifica ${names} e invoca ${g(P.type)} ${PNAME[P.type]} en ${sqName(r, c)}.`);
+      }
+      break;
+    case 'back':
+      if (cells.click.has(k)){
+        const [tr, tc] = backTarget(r, c, en); const p = b[r][c];
+        b[tr][tc] = p; b[r][c] = null; p.moved = true;
+        S.lastMove = {a:[r, c], b:[tr, tc]};
+        return finishEffect(`${who(own)} activa la trampa «${d.title}»: ${g(p.t)} de ${CNAME[en]} retrocede ${sqName(r, c)} → ${sqName(tr, tc)}.`);
+      }
+      break;
+    case 'roots':
+      if (cells.click.has(k)){
+        const p = b[r][c]; p.frozen = S.turnNum + 2;
+        return finishEffect(`${who(own)} activa la trampa «${d.title}»: ${g(p.t)} en ${sqName(r, c)} no podrá moverse en el próximo turno de ${CNAME[en]}.`);
+      }
+      break;
+  }
+  render();
+}
+function confirmSac(){
+  const P = S.pending;
+  const sum = P.sac.reduce((s, [r, c]) => s + VAL[S.board[r][c].t], 0);
+  if (sum !== VAL[P.type]) return;
+  if (!placements(P.type, P.sac, P.owner).length){ S.msg = 'Ese sacrificio dejaría a tu rey en jaque. Elegí otras piezas.'; return render(); }
+  P.step = 'place'; render();
+}
+
+/* ---------- Render ---------- */
+function viewer(){
+  if (S.phase === 'reaction') return S.reactor;
+  if (S.phase === 'effect') return S.pending.owner;
+  if (S.phase === 'main' || S.phase === 'promo') return S.turn;
+  return null;
+}
+function cardFace(card, o){
+  o = o || {};
+  const d = CARDS[card.key];
+  const cls = ['card', d.type];
+  if (o.clickable) cls.push('clickable');
+  if (o.peek) cls.push('peek');
+  if (o.glow) cls.push('glow');
+  const attrs = `data-cid="${card.id}" data-vis="1"` + (o.zone ? ` data-zone="${o.zone}" data-color="${o.color}"` : '');
+  return `<div class="${cls.join(' ')}" ${attrs} title="${d.title}">
+    <span class="badge">${BADGE[d.type]}</span>
+    <div class="art"><svg viewBox="0 0 100 64" aria-hidden="true">${ART[card.key]}</svg></div>
+    <div class="ttl">${d.title}</div>
+    <div class="desc"><span>${d.desc}</span><span class="kind">${d.type === 'magic' ? 'Magia · tu turno' : 'Trampa · turno rival'}</span></div>
+  </div>`;
+}
+const cardBack = () => `<div class="card back"><div class="emb sym">♞${VS}</div></div>`;
+
+function zoneHTML(col){
+  const v = viewer();
+  const reactorView = S.phase === 'reaction' || (S.phase === 'effect' && S.pending.owner !== S.turn);
+  const active = reactorView ? col === S.reactor : (col === S.turn && S.phase !== 'over');
+  const hand = S.hands[col];
+  const canHand = S.phase === 'main' && col === S.turn;
+  const handHTML = hand.length
+    ? hand.map(c => col === v ? cardFace(c, {zone:'hand', color:col, clickable:canHand}) : cardBack()).join('')
+    : '<span class="empty">Sin cartas</span>';
+  const slots = S.slots[col].map((s, i) => {
+    if (!s) return `<div class="slot-empty">Espacio ${i + 1}</div>`;
+    if (col !== v) return cardBack();
+    const d = CARDS[s.card.key];
+    const clickable = (S.phase === 'main' && col === S.turn) || (S.phase === 'reaction' && col === S.reactor);
+    const glow = S.phase === 'reaction' && col === S.reactor && d.type === 'trap' && !trapBlock(s.card, S.turn);
+    return cardFace(s.card, {zone:'slot', color:col, clickable, peek:true, glow});
+  }).join('');
+  const caps = S.captured[col].map(t => `<span class="${opp(col)} sym">${GLYPH[t]}${VS}</span>`).join('');
+  const chk = S.phase !== 'over' && inCheck(S.board, col);
+  return `<div class="zone ${active ? 'active' : ''}">
+    <div class="zone-head">
+      <span class="pname"><span class="kmini ${col} sym">${GLYPH.k}${VS}</span>${CNAME[col]}</span>
+      <span class="meta">Mano ${hand.length}/${HAND_MAX}</span>
+      ${chk ? '<span class="chkbadge">JAQUE</span>' : ''}
+      <span class="caps" title="Piezas capturadas">${caps}</span>
+    </div>
+    <div class="zone-body">
+      <div class="slots-wrap"><div class="lbl">Boca abajo</div><div class="slots">${slots}</div></div>
+      <div class="hand-wrap"><div class="lbl">Mano</div><div class="hand">${handHTML}</div></div>
+    </div>
+  </div>`;
+}
+
+function boardHTML(){
+  const eff = S.phase === 'effect' ? effectCells() : null;
+  const effType = eff ? CARDS[S.pending.key].type : 'magic';
+  const effc = effType === 'magic' ? '#2fe08a' : '#c08bff';
+  const effbg = effType === 'magic' ? 'rgba(47,224,138,.45)' : 'rgba(192,139,255,.5)';
+  const mv = {}; S.selMoves.forEach(m => mv[K(m.tr, m.tc)] = m);
+  const lm = S.lastMove;
+  let h = `<div class="board" style="--effc:${effc};--effbg:${effbg}">`;
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){
+    const p = S.board[r][c], k = K(r, c);
+    const cls = ['sq', (r + c) % 2 === 0 ? 'light' : 'dark'];
+    let ov = '';
+    if (lm && ((lm.a[0] === r && lm.a[1] === c) || (lm.b[0] === r && lm.b[1] === c))) ov += '<i class="ov last"></i>';
+    if (S.sel && S.sel[0] === r && S.sel[1] === c) ov += '<i class="ov sel"></i>';
+    if (eff && eff.sel.has(k)) ov += '<i class="ov effsel"></i>';
+    if (p && p.t === 'k' && S.phase !== 'over' && inCheck(S.board, p.c)) ov += '<i class="ov chk"></i>';
+    if (p && p.frozen && p.frozen >= S.turnNum) ov += '<i class="ov frz" title="Raíces"></i>';
+    if (mv[k]) ov += (p || mv[k].ep) ? '<i class="ov ring"></i>' : '<i class="ov dot"></i>';
+    if (eff && eff.click.has(k)) ov += '<i class="ov eff"></i>';
+    const clickable = (S.phase === 'main' && (mv[k] || (p && p.c === S.turn))) || (eff && (eff.click.has(k) || eff.sel.has(k)));
+    if (clickable) cls.push('click');
+    const coords = (c === 0 ? `<span class="coord rk">${8 - r}</span>` : '') + (r === 7 ? `<span class="coord fl">${FILES[c]}</span>` : '');
+    const title = p ? `${PNAME[p.t]} ${p.c === 'w' ? 'blanco' : 'negro'} · ${sqName(r, c)}${p.t !== 'k' ? ` · valor ${VAL[p.t]}` : ''}` : sqName(r, c);
+    h += `<div class="${cls.join(' ')}" data-sq="${k}" title="${title}">${ov}${p ? `<span class="pc ${p.c} sym">${GLYPH[p.t]}${VS}</span>` : ''}${coords}</div>`;
+  }
+  return h + '</div>';
+}
+
+function effectPrompt(){
+  const P = S.pending, d = CARDS[P.key], en = opp(P.owner);
+  const head = `<b>${d.title}</b> — `;
+  switch (P.key){
+    case 'step': return head + (P.step === 'pick' ? 'elegí una de tus piezas (resaltadas).' : 'elegí la casilla vacía adyacente a la que se mueve.');
+    case 'swap': return head + (P.step === 'pick' ? 'elegí la primera pieza a intercambiar.' : 'elegí la pieza con la que intercambia su lugar.');
+    case 'summon': {
+      if (P.step === 'choose') return head + 'elegí qué pieza querés traer al tablero.';
+      const sum = P.sac.reduce((s, [r, c]) => s + VAL[S.board[r][c].t], 0);
+      if (P.step === 'sacrifice') return head + `tocá tus piezas para sacrificarlas y traer ${ART_DEF[P.type]} ${PNAME[P.type]} ${g(P.type)}: <b>${sum} / ${VAL[P.type]}</b> puntos.`;
+      return head + `elegí en cuál de las casillas sacrificadas aparece ${ART_DEF[P.type]} ${PNAME[P.type]}.`;
+    }
+    case 'back': return head + `elegí una pieza de ${CNAME[en]} para que retroceda una casilla.`;
+    case 'roots': return head + `elegí una pieza de ${CNAME[en]} (no el rey) para inmovilizarla.`;
+  }
+  return '';
+}
+
+function statusHTML(){
+  let pillCol = S.turn, label = `Turno ${S.turnNum}`, prompt = '', chips = '', btns = '';
+  switch (S.phase){
+    case 'main': {
+      const left = S.movesAllowed - S.movesUsed;
+      prompt = left > 0
+        ? (S.movesUsed === 0 ? 'Hacé tu movimiento. Podés activar magia o colocar cartas antes o después de mover.' : `Te queda ${left === 1 ? 'un movimiento extra' : left + ' movimientos extra'}.`)
+        : 'Movimiento hecho. Podés usar cartas o terminar el turno.';
+      if (inCheck(S.board, S.turn)) prompt = '<b class="warn">¡Estás en jaque!</b> ' + prompt;
+      chips = `<div class="chips"><span class="chip on">Movimientos ${S.movesUsed}/${S.movesAllowed}</span><span class="chip ${S.magicUsed ? '' : 'on'}">Magia ${S.magicUsed ? 'usada' : 'disponible'}</span><span class="chip on">Espacios libres ${S.slots[S.turn].filter(s => !s).length}/3</span></div>`;
+      btns = `<button class="btn primary ${S.movesUsed >= S.movesAllowed ? 'pulse' : ''}" data-act="end" ${canEnd() ? '' : 'disabled'}>Terminar turno</button>`;
+      break;
+    }
+    case 'effect': {
+      const P = S.pending;
+      if (P.owner !== S.turn){ pillCol = P.owner; label = 'Reacción'; }
+      prompt = effectPrompt();
+      if (P.key === 'summon' && P.step === 'choose'){
+        const a = achievable(P.owner);
+        btns += ['n','b','r','q'].map(t => `<button class="btn magic" data-act="stype" data-t="${t}" ${a.has(VAL[t]) ? '' : 'disabled'}>${g(t)} ${PNAME[t]} (${VAL[t]})</button>`).join('');
+      }
+      if (P.key === 'summon' && P.step === 'sacrifice'){
+        const sum = P.sac.reduce((s, [r, c]) => s + VAL[S.board[r][c].t], 0);
+        btns += `<button class="btn magic" data-act="confirm-sac" ${sum === VAL[P.type] ? '' : 'disabled'}>Confirmar sacrificio</button>`;
+      }
+      btns += `<button class="btn" data-act="cancel">Cancelar</button>`;
+      break;
+    }
+    case 'reaction':
+      pillCol = S.reactor; label = 'Reacción';
+      prompt = `${CNAME[S.turn]} terminó su turno. ${CNAME[S.reactor]}: tocá una trampa colocada para activarla, o pasá.`;
+      btns = `<button class="btn" data-act="pass">Pasar</button>`;
+      break;
+    case 'promo': prompt = 'Elegí la pieza de coronación.'; break;
+    case 'over':
+      prompt = S.result.type === 'mate' ? `<b>Jaque mate.</b> Ganan ${CNAME[S.result.winner]}.` : '<b>Tablas por ahogado.</b>';
+      btns = `<button class="btn primary" data-act="new">Nueva partida</button>`;
+      break;
+    default: prompt = 'Esperando al siguiente jugador…';
+  }
+  if (S.msg) prompt += `<div class="msg">${S.msg}</div>`;
+  return `<div class="status">
+    <div class="who-box"><span class="pill ${pillCol}">${CNAME[pillCol]}</span><span class="tn">${label}</span></div>
+    <div class="prompt">${prompt}${chips}</div>
+    <div class="btns">${btns}</div>
+  </div>`;
+}
+
+function sideHTML(){
+  const top = S.discard[S.discard.length - 1];
+  return `
+  <div class="box preview-box"><h3>Vista de carta</h3><div id="preview" class="preview">Pasá el cursor sobre una carta visible para verla en grande.</div></div>
+  <div class="box"><h3>Mazo común</h3>
+    <div class="piles">
+      <div class="pile">${S.deck.length ? cardBack() : '<div class="slot-empty">Vacío</div>'}<span>Mazo · ${S.deck.length}</span></div>
+      <div class="pile">${top ? cardFace(top) : '<div class="slot-empty">Vacío</div>'}<span>Descarte · ${S.discard.length}</span></div>
+    </div>
+  </div>
+  <div class="box"><h3>Registro</h3><div class="log">${S.log.map(l => `<div>${l}</div>`).join('')}</div></div>
+  <details class="box"><summary>Reglas</summary><ul>
+    <li>Ajedrez clásico: enroque, captura al paso, coronación, jaque mate y ahogado.</li>
+    <li>Cada jugador empieza con 3 cartas. Al comenzar tu turno robás 1 carta del mazo común (mano máxima: ${HAND_MAX}).</li>
+    <li>En tu turno hacés 1 movimiento de ajedrez, podés activar <b>1 carta de magia</b> (desde la mano o desde un espacio) y colocar cartas boca abajo en tus 3 espacios.</li>
+    <li><b>Magia</b> (verde): se activa durante tu turno. <b>Trampa</b> (violeta): debe estar colocada boca abajo; se activa en la ventana de reacción, cuando tu rival termina su turno.</li>
+    <li>Ninguna carta puede dejar a tu propio rey en jaque y ningún movimiento captura al rey.</li>
+    <li>Sacrificio: Peón 1 · Caballo 2 · Alfil 3 · Torre 3 · Reina 5. La suma de lo sacrificado debe ser exactamente el valor de la pieza invocada.</li>
+    <li>Por cartas, un peón no puede quedar en su primera fila; si llega a la última, corona Reina.</li>
+    <li>Raíces: la pieza no se mueve en su próximo turno, salvo que su rey esté en jaque.</li>
+    <li>Si el mazo se acaba, el descarte se mezcla y forma uno nuevo.</li>
+  </ul></details>`;
+}
+
+function modalHTML(){
+  if (S.overlay){
+    const o = S.overlay;
+    return `<div class="modal-bg opaque"><div class="modal"><h2>${o.title}</h2><p>${o.text}</p><div class="btns">
+      <button class="btn primary" data-act="ov1">${o.btn}</button>${o.btn2 ? `<button class="btn" data-act="ov2">${o.btn2}</button>` : ''}</div></div></div>`;
+  }
+  if (S.phase === 'promo'){
+    const col = S.board[S.promo.fr][S.promo.fc].c;
+    return `<div class="modal-bg"><div class="modal"><h2>Coronación</h2><p>Elegí en qué pieza se convierte el peón.</p><div class="promo-row">
+      ${['q','r','b','n'].map(t => `<button data-act="promo" data-t="${t}" title="${PNAME[t]}"><span class="pc ${col} sym" style="font-size:44px">${GLYPH[t]}${VS}</span></button>`).join('')}
+    </div></div></div>`;
+  }
+  if (S.selCard){
+    const {id, zone, color} = S.selCard, card = CARD_BY_ID[id], d = CARDS[card.key];
+    const btns = []; const notes = [];
+    if (S.phase === 'main' && color === S.turn){
+      if (d.type === 'magic'){
+        const why = magicBlock(card, color);
+        btns.push(`<button class="btn magic" data-act="activate" ${why ? 'disabled' : ''}>Activar magia</button>`);
+        if (why) notes.push(why);
+      }
+      if (zone === 'hand'){
+        const full = !S.slots[color].some(s => !s);
+        btns.push(`<button class="btn ${d.type}" data-act="set" ${full ? 'disabled' : ''}>Colocar boca abajo</button>`);
+        if (full) notes.push('Tus 3 espacios están ocupados.');
+        if (d.type === 'trap') notes.push('Las trampas deben colocarse boca abajo para activarse cuando tu rival termine su turno.');
+      } else if (d.type === 'trap') notes.push('Esta trampa ya está lista: podrás activarla cuando tu rival termine su turno.');
+    }
+    if (S.phase === 'reaction' && color === S.reactor){
+      if (d.type === 'trap'){
+        const why = trapBlock(card, S.turn);
+        btns.push(`<button class="btn trap" data-act="activate" ${why ? 'disabled' : ''}>Activar trampa</button>`);
+        if (why) notes.push(why);
+      } else notes.push('Durante la reacción solo se pueden activar trampas.');
+    }
+    btns.push(`<button class="btn" data-act="close-card">Cerrar</button>`);
+    return `<div class="modal-bg" data-act="bg-close"><div class="modal">
+      <div class="bigcard">${cardFace(card)}</div>
+      ${notes.map(n => `<p class="note">${n}</p>`).join('')}
+      <div class="btns">${btns.join('')}</div></div></div>`;
+  }
+  return '';
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const prevLog = app.querySelector('.log');
+  const scrollY = window.scrollY;
+  app.innerHTML = `
+  <header class="top">
+    <h1>Ajedrez Arcano<small>Ajedrez clásico con cartas de magia y trampa · 2 jugadores en el mismo dispositivo</small></h1>
+    <div class="hctl">
+      <label><input type="checkbox" data-act="privacy" ${privacy ? 'checked' : ''}> Ocultar cartas al pasar el turno</label>
+      <button class="btn" data-act="new">Nueva partida</button>
+    </div>
+  </header>
+  ${statusHTML()}
+  <main class="layout">
+    <section class="table">
+      ${zoneHTML('b')}
+      <div class="board-wrap">${boardHTML()}</div>
+      ${zoneHTML('w')}
+    </section>
+    <aside class="side">${sideHTML()}</aside>
+  </main>
+  ${modalHTML()}`;
+  if (prevLog) window.scrollTo(0, scrollY);
+}
+
+/* ---------- Eventos ---------- */
+const app = document.getElementById('app');
+app.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]');
+  if (a){
+    const act = a.dataset.act;
+    if (act === 'bg-close'){ if (e.target === a){ S.selCard = null; render(); } return; }
+    if (a.disabled) return;
+    switch (act){
+      case 'end': endTurn(); break;
+      case 'pass': log(`${who(S.reactor)} no activa ninguna trampa.`); passTurn(); break;
+      case 'cancel': cancelEffect(); break;
+      case 'confirm-sac': confirmSac(); break;
+      case 'stype': S.pending.type = a.dataset.t; S.pending.step = 'sacrifice'; S.pending.sac = []; render(); break;
+      case 'activate': activate(); break;
+      case 'set': setCard(); break;
+      case 'close-card': S.selCard = null; render(); break;
+      case 'promo': execMove(S.promo, a.dataset.t); break;
+      case 'ov1': { const f = overlayFn; S.overlay = null; overlayFn = null; if (f) f(); render(); break; }
+      case 'ov2': { const f = overlayFn2; S.overlay = null; overlayFn2 = null; if (f) f(); render(); break; }
+      case 'new': newGame(); break;
+      case 'privacy': privacy = a.checked; break;
+    }
+    return;
+  }
+  const cd = e.target.closest('[data-cid]');
+  if (cd && cd.classList.contains('clickable')){ clickCard(+cd.dataset.cid, cd.dataset.zone, cd.dataset.color); return; }
+  const sq = e.target.closest('[data-sq]');
+  if (sq){ const [r, c] = sq.dataset.sq.split(',').map(Number); clickSquare(r, c); }
+});
+app.addEventListener('mouseover', e => {
+  const cd = e.target.closest('[data-cid][data-vis="1"]');
+  if (!cd || cd.closest('.preview') || cd.closest('.modal')) return;
+  const pv = document.getElementById('preview');
+  if (pv) pv.innerHTML = cardFace(CARD_BY_ID[+cd.dataset.cid]);
+});
+
+newGame();
+</script>
+</body>
+</html>

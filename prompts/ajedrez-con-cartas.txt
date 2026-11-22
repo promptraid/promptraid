@@ -1,0 +1,28 @@
+Creá un juego web en un solo archivo HTML (HTML, CSS y JavaScript en el mismo archivo, sin librerías externas) que fusione el ajedrez con un juego de cartas al estilo Yu-Gi-Oh. No uses nombres, cartas ni dibujos de Yu-Gi-Oh: solo la idea de cartas de magia y de trampa.
+
+AJEDREZ
+- Ajedrez completo y tradicional para dos jugadores en la misma pantalla.
+- Todas las reglas: movimientos de cada pieza, enroque, captura al paso, coronación, jaque, jaque mate y tablas.
+- Se mueve haciendo clic en una pieza y después en la casilla de destino, mostrando las jugadas posibles.
+
+CARTAS
+- Hay un mazo compartido y cada jugador saca una carta por turno.
+- Cada carta se puede guardar en la mano o usar.
+- Hay cartas de magia y cartas de trampa. Las de trampa se pueden poner boca abajo para activarlas durante el turno del rival.
+- Las cartas permiten hacer jugadas adicionales con tus piezas:
+  1. Intercambio: cambiá de lugar dos piezas tuyas.
+  2. Intercambio con el rival: cambiá de lugar una pieza tuya con una del rival.
+  3. Movimiento adicional: hacé un movimiento más.
+  4. Restauración: recuperá una pieza perdida sacrificando otras piezas tuyas, según el valor de cada una.
+
+COLORES
+- Paleta "Mármol": fondo blanco piedra #F2F0EC, casillas oscuras #8A8F98, casillas claras #E6E3DC, acento azul tinta #24418F para botones y cartas de magia, y bordó #8F2447 para las cartas de trampa.
+
+LO QUE NO ESTÁ DEFINIDO
+Elegí vos una regla razonable para cada uno de estos puntos y, al terminar, listá qué decidiste:
+- Qué hacen las cartas de trampa.
+- Si usar una carta reemplaza el movimiento del turno o se suma a él.
+- Cuántas cartas tiene el mazo y cuántas copias de cada una.
+- Cualquier caso que las reglas de arriba no cubran.
+
+Entregá el archivo completo, listo para abrir en el navegador.
